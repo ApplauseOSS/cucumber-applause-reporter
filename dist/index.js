@@ -1,7 +1,7 @@
 'use strict';
 
 var cucumber = require('@cucumber/cucumber');
-var autoApiClientJs = require('auto-api-client-js');
+var applauseReporterCommon = require('applause-reporter-common');
 var messages = require('@cucumber/messages');
 
 class CucumberAutoApiFormatter extends cucumber.Formatter {
@@ -36,7 +36,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
             throw new Error('Invalid URL: ' + autoApiUrl);
         }
         // Setup our Http Client
-        this.autoApi = new autoApiClientJs.AutoApi({
+        this.autoApi = new applauseReporterCommon.AutoApi({
             clientConfig: {
                 apiKey,
                 baseUrl: autoApiUrl,
@@ -92,7 +92,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         this.testCaseInstanceResultIdMap[event.id] = this.autoApi
             .startTestCase(this.pickleMap[testCase.pickleId].name)
             .then(res => res.data.testResultId);
-        this.testResultStatusMap[event.id] = [autoApiClientJs.TestResultStatus.PASSED, undefined];
+        this.testResultStatusMap[event.id] = [applauseReporterCommon.TestResultStatus.PASSED, undefined];
     }
     /**
      * Hook called when a TestStep is finished. Used to tell if and when a TestCase fails.
@@ -106,7 +106,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         }
         const currentStatus = this.testResultStatusMap[event.testCaseStartedId][0];
         // If the current result already has a status set, don't override it
-        if (currentStatus != autoApiClientJs.TestResultStatus.PASSED) {
+        if (currentStatus != applauseReporterCommon.TestResultStatus.PASSED) {
             return;
         }
         // Get the test case ID
@@ -127,37 +127,37 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         switch (event.testStepResult.status) {
             case messages.TestStepResultStatus.FAILED:
                 result = [
-                    autoApiClientJs.TestResultStatus.FAILED,
+                    applauseReporterCommon.TestResultStatus.FAILED,
                     'Test Failed at Step: ' + pickleStep.text,
                 ];
                 break;
             case messages.TestStepResultStatus.AMBIGUOUS:
                 result = [
-                    autoApiClientJs.TestResultStatus.ERROR,
+                    applauseReporterCommon.TestResultStatus.ERROR,
                     'Ambiguous Test Step Status at Step: ' + pickleStep.text,
                 ];
                 break;
             case messages.TestStepResultStatus.PENDING:
                 result = [
-                    autoApiClientJs.TestResultStatus.ERROR,
+                    applauseReporterCommon.TestResultStatus.ERROR,
                     'Pending TestStep Status at Step: ' + pickleStep.text,
                 ];
                 break;
             case messages.TestStepResultStatus.SKIPPED:
                 result = [
-                    autoApiClientJs.TestResultStatus.SKIPPED,
+                    applauseReporterCommon.TestResultStatus.SKIPPED,
                     'Test Skipped at Step: ' + pickleStep.text,
                 ];
                 break;
             case messages.TestStepResultStatus.UNDEFINED:
                 result = [
-                    autoApiClientJs.TestResultStatus.ERROR,
+                    applauseReporterCommon.TestResultStatus.ERROR,
                     'Undefined Test Step Status at Step: ' + pickleStep.text,
                 ];
                 break;
             case messages.TestStepResultStatus.UNKNOWN:
                 result = [
-                    autoApiClientJs.TestResultStatus.FAILED,
+                    applauseReporterCommon.TestResultStatus.FAILED,
                     'Unknown Test Step Status at Step: ' + pickleStep.text,
                 ];
                 break;
@@ -176,7 +176,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         // Pull the TestResults from the TestResultStatusMap
         const [status, failure] = this.testResultStatusMap[event.testCaseStartedId];
         // Finally, submit the TestResult
-        void (await this.autoApi.submitTestResult(resultId, status || autoApiClientJs.TestResultStatus.PASSED, failure));
+        void (await this.autoApi.submitTestResult(resultId, status || applauseReporterCommon.TestResultStatus.PASSED, failure));
     }
 }
 

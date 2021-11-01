@@ -14,7 +14,7 @@ export default [{
 		globals: {
 			'@cucumber/cucumber': 'cucumber',
 			'@cucumber/messages': 'messages',
-			'auto-api-client-js': 'autoApiClient',
+			'applause-reporter-common': 'autoApiClient',
 		}
 	}, {
 		format: 'cjs',
@@ -24,7 +24,7 @@ export default [{
 		globals: {
 			'@cucumber/cucumber': 'cucumber',
 			'@cucumber/messages': 'messages',
-			'auto-api-client-js': 'autoApiClient',
+			'applause-reporter-common': 'autoApiClient',
 		}
 	}, {
 		name: pkg['umd:name'] || pkg.name,
@@ -38,7 +38,7 @@ export default [{
 		globals: {
 			'@cucumber/cucumber': 'cucumber',
 			'@cucumber/messages': 'messages',
-			'auto-api-client-js': 'autoApiClient',
+			'applause-reporter-common': 'autoApiClient',
 		}
 	}],
 	external: [

@@ -1,5 +1,5 @@
 import { Formatter, IFormatterOptions } from '@cucumber/cucumber';
-import { AutoApi, TestResultStatus } from 'auto-api-client-js';
+import { AutoApi, TestResultStatus } from 'applause-reporter-common';
 import { EventEmitter } from 'events';
 import {
   Envelope,
