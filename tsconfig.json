@@ -1,0 +1,43 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "ts-node": {
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "commonjs",
+      "sourceMap": true,
+    },
+    "include": [
+      "test/**/*"
+    ],
+    "exclude": [
+      "test/feature/**/*.feature"
+    ]
+  },
+  "compilerOptions": {
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "types",
+    "forceConsistentCasingInFileNames": true,
+    "moduleResolution": "node",
+    "strictNullChecks": true,
+    "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    // "noUncheckedIndexedAccess": true,  buggy in Typescript 4.4.3
+    "noPropertyAccessFromIndexSignature": true, 
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "pretty": true
+  },
+  "include": [
+    "@types/**/*",
+    "src/**/*",
+    "test/**/*"
+, "features"  ],
+  "exclude": [
+    "node_modules",
+    "test/feature/**/*.feature"
+  ]
+}
