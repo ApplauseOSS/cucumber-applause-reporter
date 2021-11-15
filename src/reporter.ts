@@ -4,9 +4,11 @@ import { EventEmitter } from 'events';
 import {
   Envelope,
   Pickle,
+  PickleStep,
   TestCase,
   TestCaseFinished,
   TestCaseStarted,
+  TestStep,
   TestStepFinished,
   TestStepResultStatus,
 } from '@cucumber/messages';
@@ -136,61 +138,63 @@ export default class CucumberAutoApiFormatter extends Formatter {
     const testCase = this.testCaseStorage[testCaseId];
 
     // Look for the TestStep that was executed
-    const testStepOptions = testCase.testSteps.filter(
-      s => s?.id == event.testStepId
+    const testStepOptions: TestStep[] = testCase.testSteps.filter(
+      s => s.id == event.testStepId
     );
     if (testStepOptions && testStepOptions.length != 1) {
       throw new Error('Could not find test step within the test case');
     }
 
     // Now that we have the test step, lets look it up in the pickle to get the actual step text
-    const pickle = this.pickleMap[testCase.pickleId];
-    const pickleStepId = testStepOptions[0].pickleStepId;
-    const pickleStep = pickle.steps.filter(step => step.id == pickleStepId)[0];
+    const pickle: Pickle | undefined = this.pickleMap[testCase.pickleId];
+    const pickleStepId: string | undefined = testStepOptions[0].pickleStepId;
+    const pickleSteps: readonly PickleStep[] = pickle ? pickle.steps : [];
+    const pickleStep: PickleStep | undefined = pickleSteps.filter(
+      step => step.id == pickleStepId
+    )[0];
+
+    const stepText: string | undefined = pickleStep
+      ? pickleStep.text
+      : undefined;
 
     // Map the step status to a result status
-    let result: [TestResultStatus, string | undefined];
+    let status: TestResultStatus;
     switch (event.testStepResult.status) {
       case TestStepResultStatus.FAILED:
-        result = [
-          TestResultStatus.FAILED,
-          'Test Failed at Step: ' + pickleStep.text,
-        ];
+        status = TestResultStatus.FAILED;
         break;
       case TestStepResultStatus.AMBIGUOUS:
-        result = [
-          TestResultStatus.ERROR,
-          'Ambiguous Test Step Status at Step: ' + pickleStep.text,
-        ];
+        status = TestResultStatus.ERROR;
         break;
       case TestStepResultStatus.PENDING:
-        result = [
-          TestResultStatus.ERROR,
-          'Pending TestStep Status at Step: ' + pickleStep.text,
-        ];
+        status = TestResultStatus.ERROR;
         break;
       case TestStepResultStatus.SKIPPED:
-        result = [
-          TestResultStatus.SKIPPED,
-          'Test Skipped at Step: ' + pickleStep.text,
-        ];
+        status = TestResultStatus.SKIPPED;
         break;
       case TestStepResultStatus.UNDEFINED:
-        result = [
-          TestResultStatus.ERROR,
-          'Undefined Test Step Status at Step: ' + pickleStep.text,
-        ];
+        status = TestResultStatus.ERROR;
         break;
       case TestStepResultStatus.UNKNOWN:
-        result = [
-          TestResultStatus.FAILED,
-          'Unknown Test Step Status at Step: ' + pickleStep.text,
-        ];
+        status = TestResultStatus.FAILED;
         break;
     }
 
+    let errorMessage: string;
+    if (stepText != undefined) {
+      errorMessage = `${
+        event.testStepResult.status
+      } Test Step: ${stepText}. Reason: ${
+        event.testStepResult.message || 'Unknown'
+      }`;
+    } else {
+      errorMessage = `Test Case ${
+        event.testStepResult.status
+      } at Unknown Step. Reason: ${event.testStepResult.message || 'Unknown'}`;
+    }
+
     // Finally, save off the updated statuses
-    this.testResultStatusMap[event.testCaseStartedId] = result;
+    this.testResultStatusMap[event.testCaseStartedId] = [status, errorMessage];
   }
 
   /**

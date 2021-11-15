@@ -114,56 +114,49 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         // Lookup the TestCase
         const testCase = this.testCaseStorage[testCaseId];
         // Look for the TestStep that was executed
-        const testStepOptions = testCase.testSteps.filter(s => s?.id == event.testStepId);
+        const testStepOptions = testCase.testSteps.filter(s => s.id == event.testStepId);
         if (testStepOptions && testStepOptions.length != 1) {
             throw new Error('Could not find test step within the test case');
         }
         // Now that we have the test step, lets look it up in the pickle to get the actual step text
         const pickle = this.pickleMap[testCase.pickleId];
         const pickleStepId = testStepOptions[0].pickleStepId;
-        const pickleStep = pickle.steps.filter(step => step.id == pickleStepId)[0];
+        const pickleSteps = pickle ? pickle.steps : [];
+        const pickleStep = pickleSteps.filter(step => step.id == pickleStepId)[0];
+        const stepText = pickleStep
+            ? pickleStep.text
+            : undefined;
         // Map the step status to a result status
-        let result;
+        let status;
         switch (event.testStepResult.status) {
             case messages.TestStepResultStatus.FAILED:
-                result = [
-                    applauseReporterCommon.TestResultStatus.FAILED,
-                    'Test Failed at Step: ' + pickleStep.text,
-                ];
+                status = applauseReporterCommon.TestResultStatus.FAILED;
                 break;
             case messages.TestStepResultStatus.AMBIGUOUS:
-                result = [
-                    applauseReporterCommon.TestResultStatus.ERROR,
-                    'Ambiguous Test Step Status at Step: ' + pickleStep.text,
-                ];
+                status = applauseReporterCommon.TestResultStatus.ERROR;
                 break;
             case messages.TestStepResultStatus.PENDING:
-                result = [
-                    applauseReporterCommon.TestResultStatus.ERROR,
-                    'Pending TestStep Status at Step: ' + pickleStep.text,
-                ];
+                status = applauseReporterCommon.TestResultStatus.ERROR;
                 break;
             case messages.TestStepResultStatus.SKIPPED:
-                result = [
-                    applauseReporterCommon.TestResultStatus.SKIPPED,
-                    'Test Skipped at Step: ' + pickleStep.text,
-                ];
+                status = applauseReporterCommon.TestResultStatus.SKIPPED;
                 break;
             case messages.TestStepResultStatus.UNDEFINED:
-                result = [
-                    applauseReporterCommon.TestResultStatus.ERROR,
-                    'Undefined Test Step Status at Step: ' + pickleStep.text,
-                ];
+                status = applauseReporterCommon.TestResultStatus.ERROR;
                 break;
             case messages.TestStepResultStatus.UNKNOWN:
-                result = [
-                    applauseReporterCommon.TestResultStatus.FAILED,
-                    'Unknown Test Step Status at Step: ' + pickleStep.text,
-                ];
+                status = applauseReporterCommon.TestResultStatus.FAILED;
                 break;
         }
+        let errorMessage;
+        if (stepText != undefined) {
+            errorMessage = `${event.testStepResult.status} Test Step: ${stepText}. Reason: ${event.testStepResult.message || 'Unknown'}`;
+        }
+        else {
+            errorMessage = `Test Case ${event.testStepResult.status} at Unknown Step. Reason: ${event.testStepResult.message || 'Unknown'}`;
+        }
         // Finally, save off the updated statuses
-        this.testResultStatusMap[event.testCaseStartedId] = result;
+        this.testResultStatusMap[event.testCaseStartedId] = [status, errorMessage];
     }
     /**
      * Hook called when a TestCase finishes it's execution. USed to submit test results to AutoApi
