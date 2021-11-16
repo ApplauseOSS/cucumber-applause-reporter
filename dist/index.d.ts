@@ -11,6 +11,8 @@ declare class CucumberAutoApiFormatter extends Formatter {
     private testCaseInstanceResultIdMap;
     private pickleMap;
     private testResultStatusMap;
+    private readonly REMOVE_CONTROL_CHARS;
+    private readonly REMOVE_ANSI_CHARACTERS;
     constructor(options: IFormatterOptions);
     /**
      * Registering an event listener to Cucumber's Messaging Api. Only one event will
@@ -43,6 +45,7 @@ declare class CucumberAutoApiFormatter extends Formatter {
      * @param event The TestCaseFinished event
      */
     onTestCaseFinished(event: TestCaseFinished): Promise<void>;
+    private cleanCucumberMessage;
 }
 
 export { CucumberAutoApiFormatter as default };

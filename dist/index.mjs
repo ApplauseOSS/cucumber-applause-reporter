@@ -16,6 +16,15 @@ class CucumberAutoApiFormatter extends Formatter {
         this.pickleMap = {};
         // TestResult Status Map keeps track of the status for a TestCaseInstance. If a step fails, the test case fails
         this.testResultStatusMap = {};
+        this.REMOVE_CONTROL_CHARS = new RegExp(
+        /* eslint-disable-next-line no-control-regex */
+        /[^\x00-\x7F]/gm);
+        this.REMOVE_ANSI_CHARACTERS = new RegExp(
+        /* eslint-disable-next-line no-control-regex */
+        [
+            '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
+            '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
+        ].join('|'), 'gm');
         // Extract out any arguments and handle validation
         const apiKey = options.parsedArgvOptions['apiKey'];
         const autoApiUrl = options.parsedArgvOptions['autoApiUrl'];
@@ -146,12 +155,13 @@ class CucumberAutoApiFormatter extends Formatter {
                 status = TestResultStatus.FAILED;
                 break;
         }
+        const cucumberMessage = this.cleanCucumberMessage(event.testStepResult.message || 'Unknown');
         let errorMessage;
         if (stepText != undefined) {
-            errorMessage = `${event.testStepResult.status} Test Step: ${stepText}. Reason: ${event.testStepResult.message || 'Unknown'}`;
+            errorMessage = `${event.testStepResult.status} Test Step: ${stepText}. Reason: ${cucumberMessage}`;
         }
         else {
-            errorMessage = `Test Case ${event.testStepResult.status} at Unknown Step. Reason: ${event.testStepResult.message || 'Unknown'}`;
+            errorMessage = `Test Case ${event.testStepResult.status} at Unknown Step. Reason: ${cucumberMessage}`;
         }
         // Finally, save off the updated statuses
         this.testResultStatusMap[event.testCaseStartedId] = [status, errorMessage];
@@ -168,6 +178,11 @@ class CucumberAutoApiFormatter extends Formatter {
         const [status, failure] = this.testResultStatusMap[event.testCaseStartedId];
         // Finally, submit the TestResult
         void (await this.autoApi.submitTestResult(resultId, status || TestResultStatus.PASSED, failure));
+    }
+    cleanCucumberMessage(message) {
+        return message
+            .replace(this.REMOVE_ANSI_CHARACTERS, '')
+            .replace(this.REMOVE_CONTROL_CHARS, '');
     }
 }
 

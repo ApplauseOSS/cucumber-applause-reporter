@@ -36,6 +36,19 @@ export default class CucumberAutoApiFormatter extends Formatter {
     [testCaseInstanceId: string]: [TestResultStatus, string | undefined];
   } = {};
 
+  private readonly REMOVE_CONTROL_CHARS: RegExp = new RegExp(
+    /* eslint-disable-next-line no-control-regex */
+    /[^\x00-\x7F]/gm
+  );
+  private readonly REMOVE_ANSI_CHARACTERS: RegExp = new RegExp(
+    /* eslint-disable-next-line no-control-regex */
+    [
+      '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
+      '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
+    ].join('|'),
+    'gm'
+  );
+
   constructor(options: IFormatterOptions) {
     super(options);
 
@@ -179,20 +192,15 @@ export default class CucumberAutoApiFormatter extends Formatter {
         status = TestResultStatus.FAILED;
         break;
     }
-
+    const cucumberMessage = this.cleanCucumberMessage(
+      event.testStepResult.message || 'Unknown'
+    );
     let errorMessage: string;
     if (stepText != undefined) {
-      errorMessage = `${
-        event.testStepResult.status
-      } Test Step: ${stepText}. Reason: ${
-        event.testStepResult.message || 'Unknown'
-      }`;
+      errorMessage = `${event.testStepResult.status} Test Step: ${stepText}. Reason: ${cucumberMessage}`;
     } else {
-      errorMessage = `Test Case ${
-        event.testStepResult.status
-      } at Unknown Step. Reason: ${event.testStepResult.message || 'Unknown'}`;
+      errorMessage = `Test Case ${event.testStepResult.status} at Unknown Step. Reason: ${cucumberMessage}`;
     }
-
     // Finally, save off the updated statuses
     this.testResultStatusMap[event.testCaseStartedId] = [status, errorMessage];
   }
@@ -216,5 +224,11 @@ export default class CucumberAutoApiFormatter extends Formatter {
       status || TestResultStatus.PASSED,
       failure
     ));
+  }
+
+  private cleanCucumberMessage(message: string): string {
+    return message
+      .replace(this.REMOVE_ANSI_CHARACTERS, '')
+      .replace(this.REMOVE_CONTROL_CHARS, '');
   }
 }
