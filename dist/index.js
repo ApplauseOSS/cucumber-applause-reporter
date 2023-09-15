@@ -12,8 +12,6 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         this.testCaseStorage = {};
         // Test Case Instance Map Maps a TestCaseInstance Id (Single Execution of a TestCase) to the TestCaseId
         this.testCaseInstanceMap = {};
-        // Test Instance ResultId Map Holds References to the TestResult creation promise
-        this.testCaseInstanceResultIdMap = {};
         // Pickle Map Holds Information about the Gherkin TestCase Information (The actual written out test case)
         this.pickleMap = {};
         // TestResult Status Map keeps track of the status for a TestCaseInstance. If a step fails, the test case fails
@@ -27,32 +25,17 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
             '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
             '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
         ].join('|'), 'gm');
-        // Extract out any arguments and handle validation
-        const apiKey = options.parsedArgvOptions['apiKey'];
-        const autoApiUrl = options.parsedArgvOptions['autoApiUrl'];
-        this.runName = options.parsedArgvOptions['runName'];
-        this.productId = options.parsedArgvOptions['productId'];
-        if (apiKey == undefined || apiKey.length <= 0) {
-            throw new Error('Invalid Api Key');
-        }
-        else if (this.runName == undefined || this.runName.length <= 0) {
-            throw new Error('Invalid Run Name: ' + this.runName);
-        }
-        else if (this.productId < 0) {
-            throw new Error(`Invalid Product Id: ${this.productId}`);
-        }
-        else if (autoApiUrl == undefined || autoApiUrl.length <= 0) {
-            throw new Error('Invalid URL: ' + autoApiUrl);
-        }
-        // Setup our Http Client
-        this.autoApi = new applauseReporterCommon.AutoApi({
-            clientConfig: {
-                apiKey,
-                baseUrl: autoApiUrl,
+        const config = applauseReporterCommon.loadConfig({
+            properties: {
+                apiKey: options.parsedArgvOptions['apiKey'],
+                baseUrl: options.parsedArgvOptions['autoApiUrl'],
+                productId: options.parsedArgvOptions['productId'],
+                testRailOptions: (options.parsedArgvOptions['testRailOptions']),
+                applauseTestCycleId: (options.parsedArgvOptions['applauseTestCycleId']),
             },
-            productId: this.productId,
-            groupingName: this.runName,
         });
+        // Setup our Http Client
+        this.reporter = new applauseReporterCommon.ApplauseReporter(config);
         // Add in listener hooks
         this.registerListeners(options.eventBroadcaster);
     }
@@ -64,7 +47,13 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
      */
     registerListeners(eventBroadcaster) {
         eventBroadcaster.on('envelope', (envelope) => {
-            if (envelope.testCase) {
+            if (envelope.gherkinDocument) {
+                envelope.gherkinDocument.feature?.children.map(child => child.scenario?.name);
+            }
+            if (envelope.testRunStarted) {
+                this.reporter.runnerStart();
+            }
+            else if (envelope.testCase) {
                 this.onTestCasePrepared(envelope.testCase);
             }
             else if (envelope.pickle) {
@@ -78,6 +67,9 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
             }
             else if (envelope.testCaseFinished) {
                 void this.onTestCaseFinished(envelope.testCaseFinished);
+            }
+            else if (envelope.testRunFinished) {
+                void this.reporter.runnerEnd();
             }
         });
     }
@@ -97,10 +89,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
     onTestCaseStarted(event) {
         this.testCaseInstanceMap[event.id] = event.testCaseId;
         const testCase = this.testCaseStorage[event.testCaseId];
-        // These messages happen async from the execution of the test cases. That means that we need
-        this.testCaseInstanceResultIdMap[event.id] = this.autoApi
-            .startTestCase(this.pickleMap[testCase.pickleId].name)
-            .then(res => res.data.testResultId);
+        this.reporter.startTestCase(testCase.id, this.pickleMap[testCase.pickleId].name);
         this.testResultStatusMap[event.id] = [applauseReporterCommon.TestResultStatus.PASSED, undefined];
     }
     /**
@@ -173,13 +162,12 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
      *
      * @param event The TestCaseFinished event
      */
-    async onTestCaseFinished(event) {
-        // Wait for the test result to be created before starting the result submission
-        const resultId = await this.testCaseInstanceResultIdMap[event.testCaseStartedId];
+    onTestCaseFinished(event) {
         // Pull the TestResults from the TestResultStatusMap
         const [status, failure] = this.testResultStatusMap[event.testCaseStartedId];
+        const testCaseId = this.testCaseInstanceMap[event.testCaseStartedId];
         // Finally, submit the TestResult
-        void (await this.autoApi.submitTestResult(resultId, status || applauseReporterCommon.TestResultStatus.PASSED, failure));
+        this.reporter.submitTestCaseResult(testCaseId, status || applauseReporterCommon.TestResultStatus.PASSED, { failureReason: failure });
     }
     cleanCucumberMessage(message) {
         return message
