@@ -179,4 +179,4 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
 }
 
 module.exports = CucumberAutoApiFormatter;
-//# sourceMappingURL=index.js.map
+//# sourceMappingURL=index.cjs.map
