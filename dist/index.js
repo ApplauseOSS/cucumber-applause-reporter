@@ -25,7 +25,9 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
             '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
             '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
         ].join('|'), 'gm');
+        console.log('CDP is: ' + process.cwd());
         const config = applauseReporterCommon.loadConfig({
+            configFile: 'applause.json',
             properties: {
                 apiKey: options.parsedArgvOptions['apiKey'],
                 baseUrl: options.parsedArgvOptions['autoApiUrl'],

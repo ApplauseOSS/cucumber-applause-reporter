@@ -48,8 +48,9 @@ export default class CucumberAutoApiFormatter extends Formatter {
 
   constructor(options: IFormatterOptions) {
     super(options);
-
+    console.log('CDP is: ' + process.cwd());
     const config = loadConfig({
+      configFile: 'applause.json',
       properties: {
         apiKey: <string>options.parsedArgvOptions['apiKey'],
         baseUrl: <string>options.parsedArgvOptions['autoApiUrl'],
