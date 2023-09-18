@@ -1,5 +1,10 @@
 import { Formatter, IFormatterOptions } from '@cucumber/cucumber';
-import { AutoApi, TestResultStatus } from 'applause-reporter-common';
+import {
+  ApplauseReporter,
+  TestRailOptions,
+  TestResultStatus,
+  loadConfig,
+} from 'applause-reporter-common';
 import { EventEmitter } from 'events';
 import {
   Envelope,
@@ -14,21 +19,13 @@ import {
 } from '@cucumber/messages';
 
 export default class CucumberAutoApiFormatter extends Formatter {
-  private autoApi: AutoApi;
-
-  // Custom Parameters
-  private productId: number;
-  private runName: string;
+  private reporter: ApplauseReporter;
 
   // Maps used to handle data lookup between events.
   // Test Case Storage Handles Storing Information about a TestCase by the TestCaseId
   private testCaseStorage: { [testCaseId: string]: TestCase } = {};
   // Test Case Instance Map Maps a TestCaseInstance Id (Single Execution of a TestCase) to the TestCaseId
   private testCaseInstanceMap: { [testCaseInstanceId: string]: string } = {};
-  // Test Instance ResultId Map Holds References to the TestResult creation promise
-  private testCaseInstanceResultIdMap: {
-    [testCaseInstanceId: string]: Promise<number>;
-  } = {};
   // Pickle Map Holds Information about the Gherkin TestCase Information (The actual written out test case)
   private pickleMap: { [pickleId: string]: Pickle } = {};
   // TestResult Status Map keeps track of the status for a TestCaseInstance. If a step fails, the test case fails
@@ -51,31 +48,24 @@ export default class CucumberAutoApiFormatter extends Formatter {
 
   constructor(options: IFormatterOptions) {
     super(options);
-
-    // Extract out any arguments and handle validation
-    const apiKey = <string>options.parsedArgvOptions['apiKey'];
-    const autoApiUrl = <string>options.parsedArgvOptions['autoApiUrl'];
-    this.runName = <string>options.parsedArgvOptions['runName'];
-    this.productId = <number>options.parsedArgvOptions['productId'];
-    if (apiKey == undefined || apiKey.length <= 0) {
-      throw new Error('Invalid Api Key');
-    } else if (this.runName == undefined || this.runName.length <= 0) {
-      throw new Error('Invalid Run Name: ' + this.runName);
-    } else if (this.productId < 0) {
-      throw new Error(`Invalid Product Id: ${this.productId}`);
-    } else if (autoApiUrl == undefined || autoApiUrl.length <= 0) {
-      throw new Error('Invalid URL: ' + autoApiUrl);
-    }
+    console.log('CDP is: ' + process.cwd());
+    const config = loadConfig({
+      configFile: 'applause.json',
+      properties: {
+        apiKey: <string>options.parsedArgvOptions['apiKey'],
+        baseUrl: <string>options.parsedArgvOptions['autoApiUrl'],
+        productId: <number>options.parsedArgvOptions['productId'],
+        testRailOptions: <TestRailOptions>(
+          options.parsedArgvOptions['testRailOptions']
+        ),
+        applauseTestCycleId: <number>(
+          options.parsedArgvOptions['applauseTestCycleId']
+        ),
+      },
+    });
 
     // Setup our Http Client
-    this.autoApi = new AutoApi({
-      clientConfig: {
-        apiKey,
-        baseUrl: autoApiUrl,
-      },
-      productId: this.productId,
-      groupingName: this.runName,
-    });
+    this.reporter = new ApplauseReporter(config);
 
     // Add in listener hooks
     this.registerListeners(options.eventBroadcaster);
@@ -89,7 +79,14 @@ export default class CucumberAutoApiFormatter extends Formatter {
    */
   registerListeners(eventBroadcaster: EventEmitter): void {
     eventBroadcaster.on('envelope', (envelope: Envelope) => {
-      if (envelope.testCase) {
+      if (envelope.gherkinDocument) {
+        envelope.gherkinDocument.feature?.children.map(
+          child => child.scenario?.name
+        );
+      }
+      if (envelope.testRunStarted) {
+        this.reporter.runnerStart();
+      } else if (envelope.testCase) {
         this.onTestCasePrepared(envelope.testCase);
       } else if (envelope.pickle) {
         this.pickleMap[envelope.pickle.id] = envelope.pickle;
@@ -99,6 +96,8 @@ export default class CucumberAutoApiFormatter extends Formatter {
         this.onTestStepFinished(envelope.testStepFinished);
       } else if (envelope.testCaseFinished) {
         void this.onTestCaseFinished(envelope.testCaseFinished);
+      } else if (envelope.testRunFinished) {
+        void this.reporter.runnerEnd();
       }
     });
   }
@@ -120,10 +119,10 @@ export default class CucumberAutoApiFormatter extends Formatter {
   onTestCaseStarted(event: TestCaseStarted): void {
     this.testCaseInstanceMap[event.id] = event.testCaseId;
     const testCase = this.testCaseStorage[event.testCaseId];
-    // These messages happen async from the execution of the test cases. That means that we need
-    this.testCaseInstanceResultIdMap[event.id] = this.autoApi
-      .startTestCase(this.pickleMap[testCase.pickleId].name)
-      .then(res => res.data.testResultId);
+    this.reporter.startTestCase(
+      testCase.id,
+      this.pickleMap[testCase.pickleId].name
+    );
     this.testResultStatusMap[event.id] = [TestResultStatus.PASSED, undefined];
   }
 
@@ -210,20 +209,18 @@ export default class CucumberAutoApiFormatter extends Formatter {
    *
    * @param event The TestCaseFinished event
    */
-  async onTestCaseFinished(event: TestCaseFinished): Promise<void> {
-    // Wait for the test result to be created before starting the result submission
-    const resultId = await this.testCaseInstanceResultIdMap[
-      event.testCaseStartedId
-    ];
+  onTestCaseFinished(event: TestCaseFinished): void {
     // Pull the TestResults from the TestResultStatusMap
     const [status, failure] = this.testResultStatusMap[event.testCaseStartedId];
 
+    const testCaseId = this.testCaseInstanceMap[event.testCaseStartedId];
+
     // Finally, submit the TestResult
-    void (await this.autoApi.submitTestResult(
-      resultId,
+    this.reporter.submitTestCaseResult(
+      testCaseId,
       status || TestResultStatus.PASSED,
-      failure
-    ));
+      { failureReason: failure }
+    );
   }
 
   private cleanCucumberMessage(message: string): string {

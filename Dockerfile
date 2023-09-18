@@ -1,4 +1,4 @@
-FROM 948223650506.dkr.ecr.us-east-1.amazonaws.com/applause/base-nodejs:14.0
+FROM 948223650506.dkr.ecr.us-east-1.amazonaws.com/applause/base-nodejs:20.6
 
 # Create app directory
 WORKDIR /usr/src/app

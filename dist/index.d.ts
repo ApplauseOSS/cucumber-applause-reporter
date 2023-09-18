@@ -3,12 +3,9 @@ import { EventEmitter } from 'events';
 import { TestCase, TestCaseStarted, TestStepFinished, TestCaseFinished } from '@cucumber/messages';
 
 declare class CucumberAutoApiFormatter extends Formatter {
-    private autoApi;
-    private productId;
-    private runName;
+    private reporter;
     private testCaseStorage;
     private testCaseInstanceMap;
-    private testCaseInstanceResultIdMap;
     private pickleMap;
     private testResultStatusMap;
     private readonly REMOVE_CONTROL_CHARS;
@@ -44,7 +41,7 @@ declare class CucumberAutoApiFormatter extends Formatter {
      *
      * @param event The TestCaseFinished event
      */
-    onTestCaseFinished(event: TestCaseFinished): Promise<void>;
+    onTestCaseFinished(event: TestCaseFinished): void;
     private cleanCucumberMessage;
 }
 
