@@ -17,15 +17,17 @@ import {
   TestStepFinished,
   TestStepResultStatus,
 } from '@cucumber/messages';
+import { APPLAUSE_SESSION_ID_ATTACHMENT } from './hooks';
 
 export default class CucumberAutoApiFormatter extends Formatter {
   private reporter: ApplauseReporter;
 
   // Maps used to handle data lookup between events.
   // Test Case Storage Handles Storing Information about a TestCase by the TestCaseId
-  private testCaseStorage: { [testCaseId: string]: TestCase } = {};
+  private testCaseStorage: Record<string, TestCase> = {};
   // Test Case Instance Map Maps a TestCaseInstance Id (Single Execution of a TestCase) to the TestCaseId
-  private testCaseInstanceMap: { [testCaseInstanceId: string]: string } = {};
+  private testCaseInstanceMap: Record<string, string> = {};
+  private testCaseInstanceSessionMap: Record<string, string[]> = {};
   // Pickle Map Holds Information about the Gherkin TestCase Information (The actual written out test case)
   private pickleMap: { [pickleId: string]: Pickle } = {};
   // TestResult Status Map keeps track of the status for a TestCaseInstance. If a step fails, the test case fails
@@ -85,9 +87,26 @@ export default class CucumberAutoApiFormatter extends Formatter {
         );
       }
       if (envelope.testRunStarted) {
-        this.reporter.runnerStart();
+        this.reporter.runnerStart(
+          Object.values(this.testCaseStorage).map(
+            testCase => this.pickleMap[testCase.pickleId].name
+          )
+        );
+      } else if (envelope.attachment) {
+        if (envelope.attachment.fileName == APPLAUSE_SESSION_ID_ATTACHMENT) {
+          const testCaseStartedId = envelope.attachment.testCaseStartedId;
+          if (testCaseStartedId === undefined) {
+            return;
+          }
+          const existingSessions =
+            this.testCaseInstanceSessionMap[testCaseStartedId] || [];
+          this.testCaseInstanceSessionMap[testCaseStartedId] = [
+            ...existingSessions,
+            envelope.attachment.body,
+          ];
+        }
       } else if (envelope.testCase) {
-        this.onTestCasePrepared(envelope.testCase);
+        this.testCaseStorage[envelope.testCase.id] = envelope.testCase;
       } else if (envelope.pickle) {
         this.pickleMap[envelope.pickle.id] = envelope.pickle;
       } else if (envelope.testCaseStarted) {
@@ -103,15 +122,6 @@ export default class CucumberAutoApiFormatter extends Formatter {
   }
 
   /**
-   * Hook called when a test case is parsed. Used for storing information about a TestCase
-   *
-   * @param event The Test Case Event
-   */
-  onTestCasePrepared(event: TestCase): void {
-    this.testCaseStorage[event.id] = event;
-  }
-
-  /**
    * Hook called when a single instance of a test case is started. Used to register the start of a TestCase
    *
    * @param event The Test Case Started Event
@@ -121,7 +131,8 @@ export default class CucumberAutoApiFormatter extends Formatter {
     const testCase = this.testCaseStorage[event.testCaseId];
     this.reporter.startTestCase(
       testCase.id,
-      this.pickleMap[testCase.pickleId].name
+      this.pickleMap[testCase.pickleId].name,
+      { providerSessionIds: this.testCaseInstanceSessionMap[event.id] || [] }
     );
     this.testResultStatusMap[event.id] = [TestResultStatus.PASSED, undefined];
   }
@@ -219,7 +230,11 @@ export default class CucumberAutoApiFormatter extends Formatter {
     this.reporter.submitTestCaseResult(
       testCaseId,
       status || TestResultStatus.PASSED,
-      { failureReason: failure }
+      {
+        failureReason: failure,
+        providerSessionGuids:
+          this.testCaseInstanceSessionMap[event.testCaseStartedId] || [],
+      }
     );
   }
 
@@ -229,3 +244,5 @@ export default class CucumberAutoApiFormatter extends Formatter {
       .replace(this.REMOVE_CONTROL_CHARS, '');
   }
 }
+
+export * from './hooks.ts';

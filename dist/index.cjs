@@ -1,8 +1,18 @@
 'use strict';
 
+Object.defineProperty(exports, '__esModule', { value: true });
+
 var cucumber = require('@cucumber/cucumber');
 var applauseReporterCommon = require('applause-reporter-common');
 var messages = require('@cucumber/messages');
+
+const APPLAUSE_SESSION_ID_ATTACHMENT = 'applause-session-id';
+function linkSessionId(sessionId) {
+    this.attach(sessionId, {
+        fileName: APPLAUSE_SESSION_ID_ATTACHMENT,
+        mediaType: 'text/plain',
+    });
+}
 
 class CucumberAutoApiFormatter extends cucumber.Formatter {
     constructor(options) {
@@ -12,6 +22,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         this.testCaseStorage = {};
         // Test Case Instance Map Maps a TestCaseInstance Id (Single Execution of a TestCase) to the TestCaseId
         this.testCaseInstanceMap = {};
+        this.testCaseInstanceSessionMap = {};
         // Pickle Map Holds Information about the Gherkin TestCase Information (The actual written out test case)
         this.pickleMap = {};
         // TestResult Status Map keeps track of the status for a TestCaseInstance. If a step fails, the test case fails
@@ -53,10 +64,23 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
                 envelope.gherkinDocument.feature?.children.map(child => child.scenario?.name);
             }
             if (envelope.testRunStarted) {
-                this.reporter.runnerStart();
+                this.reporter.runnerStart(Object.values(this.testCaseStorage).map(testCase => this.pickleMap[testCase.pickleId].name));
+            }
+            else if (envelope.attachment) {
+                if (envelope.attachment.fileName == APPLAUSE_SESSION_ID_ATTACHMENT) {
+                    const testCaseStartedId = envelope.attachment.testCaseStartedId;
+                    if (testCaseStartedId === undefined) {
+                        return;
+                    }
+                    const existingSessions = this.testCaseInstanceSessionMap[testCaseStartedId] || [];
+                    this.testCaseInstanceSessionMap[testCaseStartedId] = [
+                        ...existingSessions,
+                        envelope.attachment.body,
+                    ];
+                }
             }
             else if (envelope.testCase) {
-                this.onTestCasePrepared(envelope.testCase);
+                this.testCaseStorage[envelope.testCase.id] = envelope.testCase;
             }
             else if (envelope.pickle) {
                 this.pickleMap[envelope.pickle.id] = envelope.pickle;
@@ -76,14 +100,6 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         });
     }
     /**
-     * Hook called when a test case is parsed. Used for storing information about a TestCase
-     *
-     * @param event The Test Case Event
-     */
-    onTestCasePrepared(event) {
-        this.testCaseStorage[event.id] = event;
-    }
-    /**
      * Hook called when a single instance of a test case is started. Used to register the start of a TestCase
      *
      * @param event The Test Case Started Event
@@ -91,7 +107,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
     onTestCaseStarted(event) {
         this.testCaseInstanceMap[event.id] = event.testCaseId;
         const testCase = this.testCaseStorage[event.testCaseId];
-        this.reporter.startTestCase(testCase.id, this.pickleMap[testCase.pickleId].name);
+        this.reporter.startTestCase(testCase.id, this.pickleMap[testCase.pickleId].name, { providerSessionIds: this.testCaseInstanceSessionMap[event.id] || [] });
         this.testResultStatusMap[event.id] = [applauseReporterCommon.TestResultStatus.PASSED, undefined];
     }
     /**
@@ -169,7 +185,10 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
         const [status, failure] = this.testResultStatusMap[event.testCaseStartedId];
         const testCaseId = this.testCaseInstanceMap[event.testCaseStartedId];
         // Finally, submit the TestResult
-        this.reporter.submitTestCaseResult(testCaseId, status || applauseReporterCommon.TestResultStatus.PASSED, { failureReason: failure });
+        this.reporter.submitTestCaseResult(testCaseId, status || applauseReporterCommon.TestResultStatus.PASSED, {
+            failureReason: failure,
+            providerSessionGuids: this.testCaseInstanceSessionMap[event.testCaseStartedId] || [],
+        });
     }
     cleanCucumberMessage(message) {
         return message
@@ -178,5 +197,7 @@ class CucumberAutoApiFormatter extends cucumber.Formatter {
     }
 }
 
-module.exports = CucumberAutoApiFormatter;
+exports.APPLAUSE_SESSION_ID_ATTACHMENT = APPLAUSE_SESSION_ID_ATTACHMENT;
+exports.default = CucumberAutoApiFormatter;
+exports.linkSessionId = linkSessionId;
 //# sourceMappingURL=index.cjs.map

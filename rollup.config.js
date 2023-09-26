@@ -38,6 +38,37 @@ const options = [
 		]
 	},
 	{
+		input: 'src/hooks.ts',
+		output: [{
+			format: 'esm',
+			file: 'dist/hooks.mjs',
+			sourcemap: true,
+		}, {
+			format: 'cjs',
+			file: 'dist/hooks.cjs',
+			sourcemap: true,
+		}, {
+			name: pkg['umd:name'] || pkg.name,
+			format: 'umd',
+			file: 'dist/hooks.min.js',
+			sourcemap: true,
+			plugins: [
+				terser()
+			]
+		}],
+		external: [
+			...require('module').builtinModules,
+			...Object.keys(pkg.dependencies || {}),
+		],
+		plugins: [
+			resolve(),
+			// The dts plugin will handle exporting all types in a single dts file, so we do not need to export the declarations in this case
+			typescript({
+				declaration: false,
+			})
+		]
+	},
+	{
 		input: "src/index.ts",
 		output: [{ file: "dist/index.d.ts", format: "es" }],
 		plugins: [dts.default()],

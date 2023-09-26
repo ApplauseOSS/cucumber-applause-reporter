@@ -34,6 +34,10 @@ function getDifferenceInDays(today: string, target: string): number {
 }
 
 Given('Today is {string}', function (this: CustomWorld, today: string) {
+  this.attach('f1e809859115dde96465a14b4df0f4d1a277f928', {
+    fileName: 'sessionId',
+    mediaType: 'text/plain',
+  });
   this.today = today;
 });
 
