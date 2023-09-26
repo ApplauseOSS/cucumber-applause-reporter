@@ -1,11 +1,15 @@
-import { Formatter, IFormatterOptions } from '@cucumber/cucumber';
+import { IWorld, Formatter, IFormatterOptions } from '@cucumber/cucumber';
 import { EventEmitter } from 'events';
-import { TestCase, TestCaseStarted, TestStepFinished, TestCaseFinished } from '@cucumber/messages';
+import { TestCaseStarted, TestStepFinished, TestCaseFinished } from '@cucumber/messages';
+
+declare const APPLAUSE_SESSION_ID_ATTACHMENT = "applause-session-id";
+declare function linkSessionId(this: IWorld<any>, sessionId: string): void;
 
 declare class CucumberAutoApiFormatter extends Formatter {
     private reporter;
     private testCaseStorage;
     private testCaseInstanceMap;
+    private testCaseInstanceSessionMap;
     private pickleMap;
     private testResultStatusMap;
     private readonly REMOVE_CONTROL_CHARS;
@@ -18,12 +22,6 @@ declare class CucumberAutoApiFormatter extends Formatter {
      * @param eventBroadcaster An Event Emitter
      */
     registerListeners(eventBroadcaster: EventEmitter): void;
-    /**
-     * Hook called when a test case is parsed. Used for storing information about a TestCase
-     *
-     * @param event The Test Case Event
-     */
-    onTestCasePrepared(event: TestCase): void;
     /**
      * Hook called when a single instance of a test case is started. Used to register the start of a TestCase
      *
@@ -45,4 +43,4 @@ declare class CucumberAutoApiFormatter extends Formatter {
     private cleanCucumberMessage;
 }
 
-export { CucumberAutoApiFormatter as default };
+export { APPLAUSE_SESSION_ID_ATTACHMENT, CucumberAutoApiFormatter as default, linkSessionId };

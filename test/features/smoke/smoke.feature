@@ -1,10 +1,10 @@
 Feature: Smoke
 
-    Scenario: Monday to Monday
+    Scenario: TestRail-1234 Monday to Monday
         Given Today is "Monday"
         When I ask how many days until "Monday"
         Then I should be told it is 0 days away
-    Scenario: Monday to Tuesday
+    Scenario: TestRail-1234 Monday to Tuesday
         Given Today is "Monday"
         When I ask how many days until "Tuesday"
         Then I should be told it is 1 days away
