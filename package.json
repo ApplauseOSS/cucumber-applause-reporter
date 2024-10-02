@@ -27,6 +27,7 @@
   "scripts": {
     "clean": "rm -rf ./dist/",
     "lint": "eslint ./src/ ./test/ --fix",
+    "lint-verify": "eslint ./src/ ./test/",
     "build": "rollup -c --bundleConfigAsCjs",
     "test": "cross-env NODE_OPTIONS=\"--loader ts-node/esm\" cucumber-js test/features/smoke/smoke.feature -p default"
   },
