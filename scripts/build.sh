@@ -2,6 +2,8 @@
 # exit when any command fails
 set -e
 git clean -fx -d
+yarn install
+yarn lint-verify
 yarn build
 yarn test
 if [[ `git status --porcelain` ]]; then
