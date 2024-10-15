@@ -26,9 +26,7 @@ class CucumberAutoApiFormatter extends Formatter {
         this.REMOVE_CONTROL_CHARS = new RegExp(
         /* eslint-disable-next-line no-control-regex */
         /[^\x00-\x7F]/gm);
-        this.REMOVE_ANSI_CHARACTERS = new RegExp(
-        /* eslint-disable-next-line no-control-regex */
-        [
+        this.REMOVE_ANSI_CHARACTERS = new RegExp([
             '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
             '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
         ].join('|'), 'gm');
@@ -37,7 +35,8 @@ class CucumberAutoApiFormatter extends Formatter {
             configFile: 'applause.json',
             properties: {
                 apiKey: options.parsedArgvOptions['apiKey'],
-                baseUrl: options.parsedArgvOptions['autoApiUrl'],
+                autoApiBaseUrl: options.parsedArgvOptions['autoApiBaseUrl'],
+                publicApiBaseUrl: options.parsedArgvOptions['publicApiBaseUrl'],
                 productId: options.parsedArgvOptions['productId'],
                 testRailOptions: (options.parsedArgvOptions['testRailOptions']),
                 applauseTestCycleId: (options.parsedArgvOptions['applauseTestCycleId']),

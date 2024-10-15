@@ -40,7 +40,7 @@ export default class CucumberAutoApiFormatter extends Formatter {
     /[^\x00-\x7F]/gm
   );
   private readonly REMOVE_ANSI_CHARACTERS: RegExp = new RegExp(
-    /* eslint-disable-next-line no-control-regex */
+     
     [
       '[\\u001B\\u009B][[\\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]+)*|[a-zA-Z\\d]+(?:;[-a-zA-Z\\d\\/#&.:=?%@~_]*)*)?\\u0007)',
       '(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PR-TZcf-nq-uy=><~]))',
@@ -55,7 +55,8 @@ export default class CucumberAutoApiFormatter extends Formatter {
       configFile: 'applause.json',
       properties: {
         apiKey: <string>options.parsedArgvOptions['apiKey'],
-        baseUrl: <string>options.parsedArgvOptions['autoApiUrl'],
+        autoApiBaseUrl: <string>options.parsedArgvOptions['autoApiBaseUrl'],
+        publicApiBaseUrl: <string>options.parsedArgvOptions['publicApiBaseUrl'],
         productId: <number>options.parsedArgvOptions['productId'],
         testRailOptions: <TestRailOptions>(
           options.parsedArgvOptions['testRailOptions']

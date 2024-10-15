@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import { TestCaseStarted, TestStepFinished, TestCaseFinished } from '@cucumber/messages';
 
 declare const APPLAUSE_SESSION_ID_ATTACHMENT = "applause-session-id";
-declare function linkSessionId(this: IWorld<any>, sessionId: string): void;
+declare function linkSessionId(this: IWorld<unknown>, sessionId: string): void;
 
 declare class CucumberAutoApiFormatter extends Formatter {
     private reporter;
