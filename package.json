@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@cucumber/cucumber": "^11.0.1",
-    "@cucumber/messages": "^26.0.1",
+    "@cucumber/messages": "^30.0.0",
     "applause-reporter-common": "https://github.com/ApplauseOSS/applause-reporter-common#master",
     "yarn": "^1.22.22"
   }
